@@ -1,0 +1,100 @@
+\section{Model Details\label{sec:modeldetails}}
+Section \ref{sec:model} was meant to highlight the important differences between the FEM model and previous models. However, readers that are interested in using the model may be interested in some more details of that model. The most recent version of the model can be found at \url{https://github.com/drschrank/elmerfem} and is free for use under the GNU license requirement found in the source code.
+
+All of the optical pumping cell simulations used a transient simulation. Transient simulations were used because initial simulations on some optical pumping geometries failed to converge when solving the steady-state equations. The transient time step for all the simulations was 0.1 sec/step.
+
+Two different linear solvers with different convergence limits were used for the modules. The generalized minimal residual method (GMRES) and biconjugate gradient stabilized method (BiCGSTAB) were both used for the Navier-Stokes equation. The BiCGSTAB was used exclusively for all the other modules. Non-linear and linear covergence limits were all less than $10^{-4}$ and were usually $10^{-6}$. 
+
+As described in section \ref{sec:model}, the model consists of five modules which are calculated in sequence. The first module which is calculated is the solution to the Navier-Stokes equation. It was provided with ElmerFEM-CSC and was used without modification. In all instances of the 100 cc geometry simulations, the ``Perfect Gas'' compressibility model was used. In all the 300 cc geometry simulations, the ``Incompressible'' compressibility was used with the density dependent on temperature only. In both cases, the ideal gas law was used to calculate density. The Navier-Stokes calculation is dependent on the solution to the heat equation, which is discussed later. 
+
+The second module which is calculated is the Rb diffusion. This module uses the Advection-Diffusion module. This module was also provided with ElmerFEM-CSC and was used without modification. This module's solution is only dependent on the resulting gas flow calculated by the Navier-Stokes equation.
+
+The third module is the laser absorption module. This module was based on the Advection-Reaction (eq. \ref{eq:advect-react}) module which was provided ElmerFEM-CSC. The module was modified to use the Picard method to approximate the non-linear solution by a series of iterative steps (see Ref. \cite{Raback2015} section on linearization of the Navier-Stokes equation for an example). The specific equation solved using this is described in section \ref{sec:laserasborb}. The solution to this module is only dependent on the solution to the previous module, the Rb diffusion module.
+
+The time-dependent portion of eq. \ref{eq:advect-react} is ignored by ElmerFEM solvers when the model is used to solve steady-state problems. However, for the transient simulations, the time dependent term had to be included. To handle this, the time-dependent term was multiplied by a coefficient that is much smaller than the characteristic time-steps used in the models. This modification effectively causes each time-step to be a steady-state solution of eq. \ref{eq:op}.
+
+The fourth module is the $^{129}$Xe polarization module. This module is based on the Advection-Diffusion module which was provided by ElmerFEM-CSC. The method by which the equation was solved was not changed. The only changes made were the assignments to the various constant parameters of the Advection-Diffusion equation, and the solver was forced to always use the ``absolute mass'' setting because the equation in this form is easily adapted to eq. \ref{eq:xediff}. 
+
+The solution to this module is only dependent on the laser absorption module, and the solution does not effect any of the other modules. This allows for the possibility of running simulations with only the other four modules active and then using a final, steady-state solution of the other four modules to calculate the solution to the xenon polarization. This was done for many of the 100 cc geometry simulations. 
+
+The final module is the heat equation module. This module was provided by ElmerFEM without an modification. The solution is dependent on both the laser absorption solution and the Navier-Stokes solution.
+
+Parameters for the various modules are listed in table \ref{tab:simexp}. The values of particular constants used in the equations in table can be found in the reference listed in the table.
+
+\begin{table*}[p]
+\caption{The table lists all of the expressions that are used to calculate various parameters used in the simulations. The first column lists the term in the model. The second column lists in which model the term is specifically used. The third column lists the expression used. Note that because the simulations were conducted in SI units, the actual implementation of the expression may have been multiplied by a constant to make all the units consistent. The final column lists the reference from which each expression is derived. In all cases, the notation used by the reference has been kept. For the meaning of particular notation the expressions, the reader should refer to the particular reference.\label{tab:simexp}}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\multicolumn{1}{|c|}{\textbf{Term}}& \textbf{Model} & \textbf{Expressions} & \textbf{Reference} \\
+\hline
+\begin{tabular}{@{}l@{}}Gas Mixture\\ Density\end{tabular}& 
+\begin{tabular}{@{}c@{}} Navier-Stokes\\ Heat \end{tabular} &
+\begin{tabular}{@{}c@{}} $\rho=\frac{P}{TR}$ \\ $R=C_p\frac{\gamma-1}{\gamma}$ \end{tabular} &
+\cite{Raback2015}\\ 
+\hline 
+\begin{tabular}{@{}l@{}}Gas Mixture\\ Viscosity\end{tabular}& 
+Navier-Stokes&
+\begin{tabular}{@{}c@{}} $\mu_G=2.6693 \times 10^{-5}\frac{\sqrt{M_G T}}{\sigma_G \Omega_{\mu}}$ \\ $\mu_{tot}=\sum_{i=1}^{N}\frac{x_i \mu_i}{\sum_{j=1}^{N}\Phi_{ij}x_j}$\\ 
+$\begin{aligned}\Phi_{ij}&=\frac{1}{\sqrt{8}}\left(1+\frac{M_i}{M_j}\right)^{-\frac{1}{2}}\\&\times\left[1+\left(\frac{\mu_i}{\mu_j}\right)^{\frac{1}{2}}\left(\frac{M_j}{M_i}\right)^{\frac{1}{4}}\right]^2\end{aligned}$
+\end{tabular}&
+\cite{Bird2007}\\
+\hline 
+\begin{tabular}{@{}l@{}}Heat Capacity\\ at Constant Pressure\end{tabular}&
+\begin{tabular}{@{}c@{}} Navier-Stokes \\Heat \\Rb Diffusion  \end{tabular}&
+$C_{p,mix} = \sum_i x_i C_{p,i}$&
+\cite{NIST69}\\
+\hline 
+\begin{tabular}{@{}l@{}}Specific Heat\\Ratio\end{tabular}&
+\begin{tabular}{@{}c@{}}Navier-Stoke \\ Heat\\ Rb Diffusion\end{tabular}& 
+$\gamma=\frac{\sum_a x_a\frac{f_a+2}{2}}{x_a\frac{f_a}{2}}$ &
+\cite{Bird2007}\\
+\hline 
+\begin{tabular}{@{}l@{}}Alkali Evaporation\\Rate\end{tabular}&
+Rb Diffusion&
+$\varphi=\frac{\alpha p}{\sqrt{2\pi M RT}}$&
+\cite{Kolasinski2012}\\ 
+\hline 
+Diffusion Constant&
+\begin{tabular}{@{}c@{}}Rb Diffusion\\$^{129}$Xe Polarization\end{tabular}&
+$D_{1,2}=\frac{AT^{3/2}\sqrt{\frac{1}{M_1}+\frac{1}{M_2}}}{p\sigma^2_{1,2}\Omega}$&
+\cite{Bird2007}\\ 
+\hline
+\begin{tabular}{@{}l@{}}Optical Pumping\\ Rate\end{tabular}&
+Laser Absorption&
+$\frac{\partial \gamma_p}{\partial z}=\beta\gamma_p [Rb]\left(1-\frac{\gamma_p}{\gamma_p+\Gamma_{SD}}\right)$&
+\cite{Fink2005}\\
+\hline
+\begin{tabular}{@{}l@{}}Alkali Spin\\ Destruction Rate\end{tabular}&
+Laser Absorption&
+\begin{tabular}{@{}c@{}}$\Gamma_{SD}=\Gamma_{Rb}+\Gamma_{Xe}+\Gamma_{N_2}+\Gamma_{He}+\Gamma_{VW}$\\$\Gamma_{Rb}=\kappa_{Rb}[Rb]$\\$\Gamma_{N_2}=170\left(1+\frac{T-90 ^{\circ} C}{194.36 ^{\circ} C}\right)[N_2]$\\$\Gamma_{He}=24.6\left(1+\frac{T-90 ^{\circ} C}{96.4 ^{\circ} C}\right)[He]$\\$\Gamma_{Xe}=\kappa_{Xe}[Xe]$\\$\Gamma_{VW}=\frac{6469}{f_{Xe}+1.1f_{N_2}+3.2f_{He}}$\end{tabular}&
+\begin{tabular}{@{}c@{}}\cite{Ruset2005}\\ \cite{Nelson2001} \\ \cite{Walter2002} \\ \cite{Baranga1998}\end{tabular}\\
+\hline
+\begin{tabular}{@{}l@{}}Xenon Spin-\\Exchange Rate\end{tabular}&
+$^{129}$Xe Polarization&
+$\gamma_{SE}=\kappa_{SE}[Xe]$&
+\cite{Fink2005}\\
+\hline
+\begin{tabular}{@{}l@{}}Xenon Spin-\\Relaxation Rate\end{tabular}&
+$^{129}$Xe Polarization&
+\begin{tabular}{@{}c@{}}$\Gamma_{SR}=\Gamma_B+\Gamma_{VW}$\\ $\Gamma_b=\kappa_{Xe}[Xe]$\\$\Gamma_{vdW}=\frac{\Gamma^{Xe}_{vdW}}{1+\frac{r[B]}{[Xe]}}$\end{tabular}&\cite{Chann2002}\\
+\hline
+Wall Relaxation&
+$^{129}$Xe Polarization&
+$\alpha=\frac{D_{Xe}}{R}\left(1-\sqrt{\frac{R^2}{D_{Xe}\tau}}\textrm{cot}\left[\sqrt{\frac{R^2}{D_{Xe}\tau}}\right]\right)$&
+\cite{Crank1975}\\
+\hline
+Thermal Conductivity&
+Heat&
+\begin{tabular}{@{}c@{}}$k=1.9881 \times 10^{-4}\frac{\sqrt{T/M}}{\sigma^2\Omega}$\\$k_{mix}=\sum_\alpha \frac{x_{\alpha}k_{\alpha}}{\sum_\beta x_\beta \phi_\beta}$\end{tabular}&
+\cite{Bird2007}\\
+\hline
+\begin{tabular}{@{}l@{}}Heat Transfer\\ Coefficient\end{tabular}&
+Heat&
+$\frac{1}{u}=\frac{1}{h}+\frac{1}{s_n k}$&
+\cite{Bird2007}\\
+\hline
+Laser Heating&
+Heat&
+$Q=h\nu_l[Rb]\gamma_p\frac{\Gamma_{SD}}{\gamma_p+\Gamma_{SD}}$&\cite{Fink2005}\\ \hline
+\end{tabular}
+\end{table*}

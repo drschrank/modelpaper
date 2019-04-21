@@ -1,0 +1,91 @@
+\section{\label{sec:model}Model Description}
+The FEM model presented here utilizes the finite element method to numerically solve five differential equations. The author used open-source code, ElmerFEM-CSC, to implement the model. The differential equations describe (1) fluid flow through the cell, (2) diffusion and transport of the Rb vapor, (3) heat transfer through the gas stream, (4) absorption of the laser by the Rb and subsequent Rb polarization, and (5) spin-transfer of between the Rb vapor and the $^{129}$Xe. Of the five listed equations, ElmerFEM contained modules for solving the first three. Descriptions of all the modules can be found in Ref. \cite{Raback2015}. The last two equations for laser absorption and $^{129}$Xe polarization were obtained by modifying existing ElmerFEM modules to accommodate these expressions. 
+
+That the model described here is open-source is a notable difference from the other models described in section \ref{sec:intro}. The other FEM models were produced using commercial codes that are not easily accessible to many researchers. Other finite-difference codes have not been formally published in an open-access environment. The source code for the model described here is available for download (see appendix \ref{sec:modeldetails}).
+
+The specifics of the expressions used to describe laser absorption and $^{129}$Xe polarization very closely followed Ref. \cite{Fink2005}. Major differences between the current model and other models will be highlighted in the following sections.
+
+\subsection{\label{sec:laserasborb}Laser Absorption Model}
+Laser absorption is one of the two key features of an SEOP model. The expression for modeling laser absorption by the Rb metal vapor is \cite{Wagshul1989OpticalPolarization}:
+\begin{equation}
+    \frac{\partial \psi(\nu,z)}{\partial z} = -n_{Rb}\sigma_s(\nu)\frac{\Gamma_{SD}(z)}{\gamma_{opt}(z) + \Gamma_{SD}}\psi(\nu,z)
+\end{equation}
+where $\psi$ is the photon flux density, $z$ is the azimuthal spacial coordinate, $\nu$ is the frequency of the light, $n_{Rb}$ is the number density of the Rb, $\sigma_s$ is the cross-section for absorption by unpolarized Rb, $\Gamma_{SD}$ is the spin-destruction rate of the Rb, and $\gamma_{opt} = \int_0^{\infty} \psi \sigma_s \partial \nu$ is the optical pumping rate. The expression is easily solved using finite difference methods, and it was used in many previous models. However, the presence of the integral expression is challenging for standard finite element methods.
+
+Instead, the FEM model presented here uses a similar method as Ref. \cite{Fink2005}:
+\begin{equation}
+    \frac{\partial\gamma_{opt}}{\partial z} = \beta \gamma_{opt} n_{Rb}\left(1-\frac{\gamma_{opt}}{\gamma_{opt}+\Gamma_{SD}}\right).
+    \label{eq:op}
+\end{equation}
+The expression solves explicitly for $\gamma_{opt}$ with the assumption that the beam's spectral profile is Gaussian throughout the optical pumping cell. 
+
+The laser absorption solver used the ElmerFEM-CSC Advection-Reaction module as it's template. The equation solved by the Advection-Reaction Module is \cite{Raback2015}: 
+
+\begin{equation}
+    \frac{\partial c}{\partial t}+\vec{v}\cdot\vec{\nabla} c+\Gamma c = S
+    \label{eq:advect-react}
+\end{equation}
+The following modifications were made to eq. \ref{eq:advect-react}.
+
+First, $\vec{v}$ can be constrained to be a unit vector, $\vec{n}$, pointing in the direction of the laser beam propagation. The spatial derivative eq. \ref{eq:op} can be rewritten as  $\vec{n} \cdot \vec{\nabla}\gamma_{opt} = \frac{\partial\gamma_{opt}}{\partial z}$.
+
+Second, $\Gamma$ from eq. \ref{eq:advect-react} can be set equal to:
+\begin{equation}
+    \Gamma=-\beta n_{Rb} \left(1-\frac{\gamma_{opt}}{\gamma_{opt}+\Gamma_{SD}}\right).
+\end{equation}
+The non-linear portion of the equation is solved iteratively by the Picard method. 
+
+The source term, $S$, is set to 0.
+\subsection{\label{sec:alkalidiff} Diffusion of the Alkali Metal}
+In previous models, the Rb metal vapor distribution was assumed to be uniform.  In this FEM model, a diffusion model of the Rb metal vapor is implemented using the diffusion module supplied with ElmerFEM-CSC. The simulated geometries includes a temperature-dependent source (see Figure \ref{fig:allgeometries}) using Hertz-Knudsen equation for the boundary condition of this source\cite{Fink2007}:
+\begin{equation}
+    j_{Rb}=\alpha\frac{p_{sat}-p}{2\pi M_{Rb}k_B T}
+\end{equation}
+where $p_{sat}$ is the saturation partial pressure for a given temperature, $p$ is the instantaneous partial pressure, $M_{Rb}$ is the molecular mass of the Rb, $k_B$ is Bultmann's constant, $T$ is the absolute temperature, and $\alpha$ is the evaporation coefficient of Rb. Although $\alpha$ has not been measured for Rb, Ref. \cite{Fink2007} notes that the ideal value of $\alpha=1$ is expected. For all the simulations presented here, this value of $\alpha$ was used. For the current model, the saturation and instantaneous partial pressures were converted to absolute mass concentration used as default in Elmer diffusion models \cite{Raback2015}.
+
+\subsection{\label{sec:wallrelax} Wall Relaxation of HP $^{129}$Xe}
+In most previous simulations, wall relaxation is modeled as a constant term in the HP $^{129}$Xe spin-relaxation term. In this simulation, the diffusion-based model of HP $^{129}$Xe wall-relaxation is a refinement of the expression presented in Ref. \cite{Fink2005}. In that study, the wall boundary conditions were modeled as completely depolarizing HP $^{129}$Xe spin-polarization at the walls. The authors offered an alternative model with the depolarization set to 1\% rather than 100\%. However, they noted that the lack of experimental data hinders more precise estimations.
+
+The present study attempts to refine this approximation and connect the boundary condition at the walls to the wall relaxation time. The wall relaxation time (at room temperature) can easily be measured for a given cell by filling the cell with HP $^{129}$Xe and monitoring the amplitude of the HP $^{129}$Xe NMR as a function of time. It is known that this relaxation time is typically 10s of minutes \cite{Freeman2014}.
+
+The current study uses the solution to the diffusion equation for surface-evaporation in a sphere. Like with the evaporation of the Rb, we wish to have an expression that relates the flux of polarization to the surface:
+\begin{equation}
+    j=-D_{Xe}\frac{\partial P}{\partial r}=\alpha P.
+\end{equation}
+
+The solution to the diffusion equation for a spherical geometry with this boundary condition is \cite{Crank1975}:
+\begin{equation}
+    \frac{P}{P_i}=\frac{2LR}{r}\sum_{n=1}^{\infty}\frac{\textrm{exp}(-D_{Xe}\beta^2_nt/R^2}{\beta^2_n+L(L-1)}\frac{\textrm{sin}(\beta_n r/R}{\textrm{sin}\beta_n}
+    \label{eq:diffsol}
+\end{equation}
+
+where the $\beta_n$'s are the roots of $\beta_n\textrm{cot}\left(\beta_n\right)+L-1=0$, $L=\frac{a \alpha}{D_{Xe}}$, and $R$ is the radius of the sphere. 
+
+The wall relaxation time, $\tau_{wall}$, can be defined by the expression for relaxation of HP $^{129}$Xe:
+\begin{equation}
+    \frac{P}{P_i}=\textrm{exp}\left(\frac{-t}{\tau_{wall}}\right).
+    \label{eq:wallrelax}
+\end{equation}
+
+In the limit of $n=2,3,... \beta_n >> \beta_1 $, the larger $\beta_n$s can be ignored and only the $\beta_1$ term will significantly contribute at long timescales.  It turns out that for typical values found in SEOP systems (i.e. $R>5$ cm and $\tau_{wall}>10$ min), $L<0.5$ and the ratio $\frac{\beta_1}{\beta_n}>\approx10$. We can, therefore, compare the time-dependent portion of eq. \ref{eq:diffsol} to just the first term of eq. \ref{eq:wallrelax}, and we find that $\tau_{wall}=\frac{R^2}{D\beta^2}$. Therefore, solving for $\alpha$, we find that:
+\begin{equation}
+    \alpha=\frac{D_{Xe}}{R}\left(1-\sqrt{\frac{R^2}{D_{Xe}\tau_{wall}}}\textrm{cot}\left[\sqrt{\frac{R^2}{D_{Xe}\tau_{wall}}}\right]\right).
+\end{equation}
+
+The expression was checked computationally in simple spherical models to give the correct transient relaxation time and decay curve.
+
+\subsection{\label{sec:thermtrans} Thermal Transfer through Cell Walls}
+The present model attempts to capture of nuances of thermal transfer the optical pumping cell walls. The model assumes the optical pumping cell is in a forced-air oven where the temperature of the air is held constant. Heat transfer in the walls of the cell is solved by imposing the boundary condition:
+\begin{equation}
+    -k\frac{\partial T}{\partial n}=\alpha_T\left(T-T_{ext}\right)
+    \label{eq:tempboundary}
+\end{equation}
+where $k$ is the heat conductivity of the gas mixture in the cell, $T$ is the temperature at the boundary, $T_{ext}$ is the temperature at which the external flowing air is held, and $\alpha_T$ is the heat transfer coefficient. The heat transfer coefficient is calculated by combining the affects of the optical pumping wall (usually glass; thermal conductivity $k_{wall} = 1.005$) and the that of forced-air convection (heat transfer coefficient $\alpha_{air} \approx 35$). These two terms can be combined into a single heat transfer coefficient boundary condition by using the expression \cite{Bird2007}:
+\begin{equation}
+    \frac{1}{\alpha_T}=\frac{t_{wall}}{k_{wall}}+\frac{1}{\alpha_{air}}
+    \label{eq:overheattranscoef}
+\end{equation}
+where $t_{wall}$ is the thickness of the wall. The expression assumes that the contact area of the different boundaries being approximately are equal, which is true when $t_{wall}$ is small compared with the other linear dimensions of the optical-pumping cell.
+
+\subsection{\label{sec:modelother} Other Considerations}
+Other quantities, such as viscosity and heat capacity, were calculated using standard expressions (see Table \ref{tab:simexp}). These quantities were used as inputs for the standard modules in ElmerFEM: Navier-Stokes equation, heat equation, and advection-diffusion equation \cite{Raback2015}. For more information, see appendix \ref{sec:modeldetails}.

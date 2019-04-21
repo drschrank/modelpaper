@@ -1,0 +1,49 @@
+\section{Details of the Derivation of the Difference Between the Freeman Model and the FEM Model\label{sec:diffderiv}}
+In section \ref{sec:verification}, it is stated without proof that the assumptions of the Ref. \cite{Freeman2014} model give rise to an exponential dependence on flow rate when a uniform Rb polarization is assumed, while the assumptions of the FEM model give rise to a linear dependence on flow rate when a Rb polarization gradient is assumed. In this appendix, the derivation of that result will be given.
+
+The FEM model uses the advection-diffusion equation to model $^{129}$Xe polarization. The form of that equation in one dimension is:
+\begin{multline}
+    D\frac{\partial^2 P_{Xe}}{\partial x^2}+v\frac{\partial P_{Xe}}{\partial x}+\left(\sigma+\Gamma\right)P_{Xe}=\\ \sigma\left(\frac{P_L-P_0}{L}x+P_0\right).
+    \label{eq:xediff}
+\end{multline}
+
+The Rb polarization is assumed to have a linear gradient given by:
+\begin{equation}
+   P_{Rb}(x)=\frac{P_L-P_0}{L}x+P_0
+   \label{eq:linrbdef}
+\end{equation}
+where $P_L$ is the highest polarization of the Rb at point $x=L$, and $P_0$ is the lowest Rb polarization at the point $x=0$. From Ref. \cite{Walker2011}, it is clear in the limit as $L \to \infty$ that $P_{Xe} \to \frac{\sigma}{\sigma+\Gamma}P_L$. The solution to eq. \ref{eq:xediff} is given by:
+\begin{multline}
+     P_{Xe}(x) =  K_1e^{x\frac{v+\sqrt{v^2-4D(\sigma+\Gamma)}}{2D}}+K_2e^{x\frac{v-\sqrt{v^2-4D(\sigma+\Gamma)}}{2D}} -\\ \frac{v \sigma (P_L-P_0)}{L(\sigma+\Gamma)^2}+\frac{\sigma(P_L-P_0)x}{L(\sigma+\Gamma)}+\frac{\sigma P_0}{(\sigma+\Gamma)}.   
+\end{multline}
+
+For $v^2>>4D(\sigma+\Gamma)$, this can be simplified to:
+\begin{multline}
+         P_{Xe}(x) =  K_1e^{-\frac{vx}{D}}+K_2+\\ \frac{\sigma}{\sigma+\Gamma}\left(P_{Rb}(x)-\frac{v(P_L-P_0}{L(\sigma+\Gamma)}\right).
+\end{multline}
+
+If $\frac{vL}{D}>>1$, then 
+\begin{multline}
+    P_{Xe}(L) = K_2+\frac{\sigma}{\sigma+\Gamma}\left(P_L-\frac{v(P_L-P_0}{L(\sigma+\Gamma)}\right).
+\end{multline}
+
+For $L \to \infty$, we get:
+\begin{equation}
+    P_{Xe}(L\to\infty) \to K_2+\frac{\sigma}{\sigma+\Gamma}P_L = \frac{\sigma}{\sigma+\Gamma}P_L,
+\end{equation}
+which implies:
+\begin{equation}
+    K_2=0.
+\end{equation}
+
+Therefore, solving the diffusion equation for the polarization of $^{129}$Xe  in a one dimension assuming a linear Rb polarization gradient gives:
+\begin{equation}
+    P_{Xe}(x) = \frac{\sigma}{\sigma+\Gamma}\left(P_L-\frac{v(P_L-P_0}{L(\sigma+\Gamma)}\right),
+\end{equation}
+which linearly decreases as the flow rate, $v$, increases.
+
+The Ref. \cite{Freeman2014} model uses eq. \ref{eq:xediff} with the diffusion term absent and an average Rb polarization $\bar P_{ave} = \frac{P_L+P_0}{2}$. The solution to this equation can be trivially shown to be:
+\begin{equation}
+    P_{Xe}(L) = \frac{\bar P_{ave} \sigma}{\sigma+\Gamma}\left(1-e^{-\frac{(\sigma+\Gamma)L}{v}}\right),
+\end{equation}
+which exponentially decreases as a function of $v$.
